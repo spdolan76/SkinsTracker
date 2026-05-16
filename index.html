@@ -3,86 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hiawatha Live Skins Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link rel="stylesheet" href="style.css">
+    <title>Hiawatha Landing - White Tees Tracker</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; color: #333; margin: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        h1 { color: #1e4620; margin-bottom: 5px; }
+        .subtitle { color: #666; margin-bottom: 25px; font-size: 0.95rem; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 0.9rem; text-align: center; }
+        th, td { padding: 10px; border: 1px solid #ddd; }
+        th { background-color: #1e4620; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .highlight-row { background-color: #eaeaea !important; font-weight: bold; color: #1e4620; }
+        .score-input { width: 45px; text-align: center; padding: 4px; border: 1px solid #ccc; border-radius: 4px; }
+    </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-12">
+<body>
 
-    <!-- Live Notification Banner -->
-    <div id="notificationBanner" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-2xl opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2">
-        <span id="notificationText">Skin Carded!</span>
-    </div>
+<div class="container">
+    <h1>The Links at Hiawatha Landing</h1>
+    <div class="subtitle">Course Metrics: White Tees | Rating: 70.0 | Slope: 127</div>
 
-    <div class="max-w-4xl mx-auto px-4 pt-6">
-        <!-- Header -->
-        <header class="mb-6 text-center border-b border-slate-800 pb-4">
-            <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">The Links at Hiawatha Landing</h1>
-            <p class="text-slate-400 text-sm mt-1">Live League Skins • Gross Birdies or Better Only</p>
-        </header>
+    <form id="scorecardForm">
+        <!-- FRONT NINE -->
+        <h3>Front Nine (Out)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hole</th>
+                    <th>1</th>
+                    <th>2</th>
+                    <th>3</th>
+                    <th>4</th>
+                    <th>5</th>
+                    <th>6</th>
+                    <th>7</th>
+                    <th>8</th>
+                    <th>9</th>
+                    <th class="highlight-row">OUT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Par</strong></td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>3</td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>3</td>
+                    <td>5</td>
+                    <td>4</td>
+                    <td>5</td>
+                    <td class="highlight-row">36</td>
+                </tr>
+                <tr>
+                    <td><strong>Yards</strong></td>
+                    <td>375</td>
+                    <td>377</td>
+                    <td>149</td>
+                    <td>361</td>
+                    <td>345</td>
+                    <td>188</td>
+                    <td>476</td>
+                    <td>375</td>
+                    <td>453</td>
+                    <td class="highlight-row">3,099</td>
+                </tr>
+                <tr>
+                    <td><strong>Score</strong></td>
+                    <td><input type="number" class="score-input front" data-hole="1"></td>
+                    <td><input type="number" class="score-input front" data-hole="2"></td>
+                    <td><input type="number" class="score-input front" data-hole="3"></td>
+                    <td><input type="number" class="score-input front" data-hole="4"></td>
+                    <td><input type="number" class="score-input front" data-hole="5"></td>
+                    <td><input type="number" class="score-input front" data-hole="6"></td>
+                    <td><input type="number" class="score-input front" data-hole="7"></td>
+                    <td><input type="number" class="score-input front" data-hole="8"></td>
+                    <td><input type="number" class="score-input front" data-hole="9"></td>
+                    <td id="outTotal" class="highlight-row">-</td>
+                </tr>
+            </tbody>
+        </table>
 
-        <!-- Control & Configuration Board -->
-        <section class="bg-slate-800 rounded-xl p-4 mb-6 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Total Round Pot ($)</label>
-                <input type="number" id="potPerHole" value="80" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white font-mono font-bold text-lg focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
-            </div>
-            <div>
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">League Group Field</label>
-                <div class="grid grid-cols-2 gap-2" id="playerInputs">
-                    <input type="text" value="Player 1" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
-                    <input type="text" value="Player 2" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
-                    <input type="text" value="Player 3" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
-                    <input type="text" value="Player 4" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
-                </div>
-            </div>
-        </section>
+        <!-- BACK NINE -->
+        <h3>Back Nine (In)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Hole</th>
+                    <th>10</th>
+                    <th>11</th>
+                    <th>12</th>
+                    <th>13</th>
+                    <th>14</th>
+                    <th>15</th>
+                    <th>16</th>
+                    <th>17</th>
+                    <th>18</th>
+                    <th class="highlight-row">IN</th>
+                    <th class="highlight-row">TOT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Par</strong></td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>5</td>
+                    <td>3</td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>4</td>
+                    <td>3</td>
+                    <td>5</td>
+                    <td class="highlight-row">36</td>
+                    <td class="highlight-row">72</td>
+                </tr>
+                <tr>
+                    <td><strong>Yards</strong></td>
+                    <td>337</td>
+                    <td>350</td>
+                    <td>517</td>
+                    <td>144</td>
+                    <td>322</td>
+                    <td>401</td>
+                    <td>384</td>
+                    <td>171</td>
+                    <td>470</td>
+                    <td class="highlight-row">3,096</td>
+                    <td class="highlight-row">6,195</td>
+                </tr>
+                <tr>
+                    <td><strong>Score</strong></td>
+                    <td><input type="number" class="score-input back" data-hole="10"></td>
+                    <td><input type="number" class="score-input back" data-hole="11"></td>
+                    <td><input type="number" class="score-input back" data-hole="12"></td>
+                    <td><input type="number" class="score-input back" data-hole="13"></td>
+                    <td><input type="number" class="score-input back" data-hole="14"></td>
+                    <td><input type="number" class="score-input back" data-hole="15"></td>
+                    <td><input type="number" class="score-input back" data-hole="16"></td>
+                    <td><input type="number" class="score-input back" data-hole="17"></td>
+                    <td><input type="number" class="score-input back" data-hole="18"></td>
+                    <td id="inTotal" class="highlight-row">-</td>
+                    <td id="grandTotal" class="highlight-row">-</td>
+                </tr>
+            </tbody>
+        </table>
+    </form>
+</div>
 
-        <!-- Scorecard Responsive View Matrix -->
-        <section class="bg-slate-800 rounded-xl shadow-xl overflow-hidden mb-6 border border-slate-700">
-            <div class="overflow-x-auto">
-                <table class="w-full min-w-[600px] table-fixed border-collapse">
-                    <thead>
-                        <tr class="bg-slate-750 border-b border-slate-700 text-slate-400">
-                            <th class="w-20 p-3 text-left text-xs font-bold uppercase tracking-wider">Hole</th>
-                            <th class="w-16 p-3 text-center text-xs font-bold uppercase tracking-wider bg-slate-850/50">Par</th>
-                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 1</th>
-                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 2</th>
-                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 3</th>
-                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 4</th>
-                        </tr>
-                    </thead>
-                    <tbody id="scorecardBody" class="divide-y divide-slate-700/60">
-                        <!-- Populated by App JS Initialization -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
+<script>
+    const frontInputs = document.querySelectorAll('.score-input front');
+    const backInputs = document.querySelectorAll('.score-input back');
+    const allInputs = document.querySelectorAll('.score-input');
 
-        <!-- Real-Time Metrics & Dashboards -->
-        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Dynamic Payout Ledger -->
-            <div class="bg-slate-800 rounded-xl p-5 shadow-xl border border-slate-700">
-                <h2 class="text-xl font-bold text-slate-200 mb-4 flex justify-between items-center">
-                    <span>Skins Split Payout</span>
-                    <span class="text-xs bg-emerald-950 text-emerald-400 font-mono px-2.5 py-1 rounded border border-emerald-800" id="totalPotDisplay">Total Pot: $80 (0 Skins)</span>
-                </h2>
-                <div id="payoutContainer" class="space-y-3">
-                    <!-- Dynamic Ledger Target -->
-                </div>
-            </div>
+    allInputs.forEach(input => {
+        input.addEventListener('input', calculateTotals);
+    });
 
-            <!-- Skin Verification Analysis Feed -->
-            <div class="bg-slate-800 rounded-xl p-5 shadow-xl border border-slate-700 flex flex-col">
-                <h2 class="text-xl font-bold text-slate-200 mb-4">Live Skins Audit Log</h2>
-                <div class="overflow-y-auto max-h-64 flex-1 space-y-2 text-sm pr-1" id="analysisLog">
-                    <!-- Dynamic Feed Target -->
-                </div>
-            </div>
-        </section>
-    </div>
+    function calculateTotals() {
+        let outSum = 0;
+        let inSum = 0;
 
-    <!-- Application Script Module Injection -->
-    <script type="module" src="app.js"></script>
+        document.querySelectorAll('.score-input.front').forEach(i => {
+            outSum += Number(i.value) || 0;
+        });
+
+        document.querySelectorAll('.score-input.back').forEach(i => {
+            inSum += Number(i.value) || 0;
+        });
+
+        document.getElementById('outTotal').textContent = outSum > 0 ? outSum : '-';
+        document.getElementById('inTotal').textContent = inSum > 0 ? inSum : '-';
+        document.getElementById('grandTotal').textContent = (outSum + inSum) > 0 ? (outSum + inSum) : '-';
+    }
+</script>
+
 </body>
 </html>
