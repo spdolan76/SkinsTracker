@@ -9,25 +9,22 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // !!! PASTE YOUR COPIED CONFIG OBJECT DIRECTLY HERE FROM FIREBASE CONSOLE !!!
- const firebaseConfig = {
-  apiKey: "AIzaSyCidvULMz_g32saznq15q3lJrtnufd_xIo",
-  authDomain: "golfleagueskins.firebaseapp.com",
-  projectId: "golfleagueskins",
-  storageBucket: "golfleagueskins.firebasestorage.app",
-  messagingSenderId: "1079188950398",
-  appId: "1:1079188950398:web:eeda309172314e79eb772f",
-  measurementId: "G-RCWCWS954E"
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "...",
+    appId: "..."
 };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
 
 // Initialize Cloud Connections
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 const auth = getAuth(app);
 
+// Official Layout Architecture: White Tees at The Links at Hiawatha Landing
 const HiawathaCourseData = [
     { hole: 1, par: 4, yards: 375 }, { hole: 2, par: 4, yards: 377 }, { hole: 3, par: 3, yards: 149 },
     { hole: 4, par: 4, yards: 361 }, { hole: 5, par: 4, yards: 345 }, { hole: 6, par: 3, yards: 188 },
@@ -78,8 +75,7 @@ onAuthStateChanged(auth, (user) => {
     }
 });
 
-// Switch Mode Layouts (Login vs Sign Up)
-// Bind the toggle engine to the window context so the HTML button can always hit it
+// Exposed globally to escape module scope restrictions and run perfectly on UI click events
 window.toggleAuthMode = function() {
     isSignUpMode = !isSignUpMode;
     authError.classList.add('hidden');
@@ -124,7 +120,7 @@ function displayAuthError(rawMsg) {
 }
 
 /* ==========================================================================
-   CORE SCORECARD CORE LOGIC ENGINE
+   CORE SCORECARD LOGIC ENGINE (BIRDIE OR BETTER SCORING RULESET)
    ========================================================================== */
 
 function initScorecardElements() {
@@ -162,6 +158,7 @@ window.sendScoreToFirebase = function(inputEl) {
 
     let val = inputEl.value === "" ? null : parseInt(inputEl.value);
 
+    // Hard Enforce 0-to-Double Par rules before dispatching database network syncs
     if (val !== null) {
         if (val < 0) { val = 0; inputEl.value = 0; }
         else if (val > maxAllowed) { val = maxAllowed; inputEl.value = maxAllowed; }
@@ -178,7 +175,6 @@ window.sendConfigToFirebase = function() {
 };
 
 function startDatabaseRealtimeSync() {
-    // Keep reference handle to kill pipeline on logout events
     dbUnsubscribe = onValue(ref(db, 'round'), (snapshot) => {
         const data = snapshot.val();
         if (!data) return;
@@ -208,7 +204,6 @@ function startDatabaseRealtimeSync() {
     });
 }
 
-// Logic engine wrapper and ledger construction pipeline
 function localCalculateEngine(data) {
     const totalRoundPot = (data.config && data.config.potPerHole) ? parseFloat(data.config.potPerHole) : 80;
     const players = (data.config && data.config.playerNames) ? data.config.playerNames : ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
@@ -219,6 +214,9 @@ function localCalculateEngine(data) {
     
     players.forEach((p, idx) => { skinsCount[idx] = 0; payouts[idx] = 0; });
     document.getElementById('analysisLog').innerHTML = '';
+    
+    // Clear previous cell green highlights safely before calculation refresh loops
+    document.querySelectorAll('.score-input').forEach(el => el.classList.remove('skin-winner-cell'));
 
     let roundSkinsDraft = [];
 
@@ -231,7 +229,7 @@ function localCalculateEngine(data) {
 
         for (let pIdx = 0; pIdx < 4; pIdx++) {
             const scoreVal = holeData ? parseInt(holeData[`p_${pIdx}`]) : null;
-            if (!scoreVal || isNaN(scoreVal)) validHole = false;
+            if (scoreVal === null || isNaN(scoreVal)) validHole = false;
             holeScores.push({ playerIndex: pIdx, score: scoreVal });
         }
 
@@ -243,11 +241,17 @@ function localCalculateEngine(data) {
         const minScore = Math.min(...holeScores.map(s => s.score));
         const lowest = holeScores.filter(s => s.score === minScore);
 
+        // Core Requirement Rule: Score must be strictly lone lowest AND lower than par (Birdie or better)
         if (lowest.length === 1 && minScore < targetPar) {
             const winnerIdx = lowest[0].playerIndex;
             skinsCount[winnerIdx]++;
             totalSkinsWon++;
-            roundSkinsDraft.push({ hole: h, msg: `${players[winnerIdx]} carded a ${targetPar - minScore === 1 ? 'Birdie' : 'Eagle+'} (${minScore})`, winnerName: players[winnerIdx] });
+            
+            const matchEl = document.querySelector(`[data-hole="${h}"][data-player="${winnerIdx}"]`);
+            if (matchEl) matchEl.classList.add('skin-winner-cell');
+
+            const scoreRelation = (targetPar - minScore === 1) ? 'Birdie' : 'Eagle+';
+            roundSkinsDraft.push({ hole: h, msg: `${players[winnerIdx]} carded a ${scoreRelation} (${minScore})`, winnerName: players[winnerIdx] });
         } else {
             createLogEntry(h, lowest.length === 1 ? `Par (${minScore}) cannot secure skin` : `Halved at ${minScore}`, `No Skin`, 'text-slate-400');
         }
