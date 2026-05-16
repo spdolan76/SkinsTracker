@@ -79,7 +79,8 @@ onAuthStateChanged(auth, (user) => {
 });
 
 // Switch Mode Layouts (Login vs Sign Up)
-authToggleBtn.addEventListener('click', () => {
+// Bind the toggle engine to the window context so the HTML button can always hit it
+window.toggleAuthMode = function() {
     isSignUpMode = !isSignUpMode;
     authError.classList.add('hidden');
     authForm.reset();
@@ -97,7 +98,7 @@ authToggleBtn.addEventListener('click', () => {
         authToggleText.innerText = "Need an account?";
         authToggleBtn.innerText = "Sign Up Instead";
     }
-});
+};
 
 // Authentication Form Dispatcher Submission Hook
 authForm.addEventListener('submit', (e) => {
