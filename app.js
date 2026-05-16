@@ -3,13 +3,13 @@ import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebase
 
 // !!! PASTE YOUR COPIED CONFIG OBJECT DIRECTLY HERE FROM FIREBASE CONSOLE !!!
 const firebaseConfig = {
-  apiKey: "AIzaSyCidvULMz_g32saznq15q3lJrtnufd_xIo",
-  authDomain: "golfleagueskins.firebaseapp.com",
-  projectId: "golfleagueskins",
-  storageBucket: "golfleagueskins.firebasestorage.app",
-  messagingSenderId: "1079188950398",
-  appId: "1:1079188950398:web:eeda309172314e79eb772f",
-  measurementId: "G-RCWCWS954E"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+    messagingSenderId: "...",
+    appId: "..."
 };
 
 // Initialize Cloud Connections
@@ -17,34 +17,41 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 const totalHoles = 18;
-// Hardcoded Course Specifications: The Links at Hiawatha Landing (Par 72 layout)
-const HiawathaPars = [
-    4, 4, 4, 4, 3, 5, 4, 3, 5, // Front 9 (Par 36)
-    4, 4, 4, 3, 4, 5, 4, 3, 5  // Back 9  (Par 36)
+
+// Hardcoded Course Specifications: White Tees at The Links at Hiawatha Landing
+const HiawathaCourseData = [
+    { hole: 1, par: 4, yards: 375 }, { hole: 2, par: 4, yards: 377 }, { hole: 3, par: 3, yards: 149 },
+    { hole: 4, par: 4, yards: 361 }, { hole: 5, par: 4, yards: 345 }, { hole: 6, par: 3, yards: 188 },
+    { hole: 7, par: 5, yards: 476 }, { hole: 8, par: 4, yards: 375 }, { hole: 9, par: 5, yards: 453 },
+    { hole: 10, par: 4, yards: 337 }, { hole: 11, par: 4, yards: 350 }, { hole: 12, par: 5, yards: 517 },
+    { hole: 13, par: 3, yards: 144 }, { hole: 14, par: 4, yards: 322 }, { hole: 15, par: 4, yards: 401 },
+    { hole: 16, par: 4, yards: 384 }, { hole: 17, par: 3, yards: 171 }, { hole: 18, par: 5, yards: 470 }
 ];
 
 let currentSkinsCountGlobal = 0;
 
-// Render basic input infrastructure markup
+// Render basic input infrastructure matrix dynamically
 function initScorecardElements() {
     const body = document.getElementById('scorecardBody');
     body.innerHTML = '';
-    for (let i = 1; i <= totalHoles; i++) {
+    
+    HiawathaCourseData.forEach(hd => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-800/40 transition-colors";
         tr.innerHTML = `
-            <td class="p-3 font-semibold text-slate-400">Hole ${i}</td>
-            <td class="p-3 text-center font-bold bg-slate-850/40 text-slate-400">${HiawathaPars[i-1]}</td>
+            <td class="p-3 font-semibold text-slate-400">Hole ${hd.hole}</td>
+            <td class="p-3 text-center font-black bg-slate-850/40 text-slate-300 border-x border-slate-750/30">${hd.par}</td>
+            <td class="p-3 text-center font-mono font-medium text-xs text-slate-500 bg-slate-850/10">${hd.yards}</td>
             ${[0,1,2,3].map(pIdx => `
                 <td class="p-1.5">
-                    <input type="number" min="1" max="15" data-hole="${i}" data-player="${pIdx}" 
-                    class="score-input hole-${i} w-full bg-slate-950 border border-slate-700/80 rounded py-2 text-center font-black text-lg text-emerald-400 focus:outline-none focus:border-emerald-500 transition-colors" 
+                    <input type="number" min="1" max="15" data-hole="${hd.hole}" data-player="${pIdx}" 
+                    class="score-input hole-${hd.hole} w-full bg-slate-950 border border-slate-700/80 rounded py-2 text-center font-black text-lg text-emerald-400 focus:outline-none focus:border-emerald-500 transition-colors" 
                     oninput="sendScoreToFirebase(this)">
                 </td>
             `).join('')}
         `;
         body.appendChild(tr);
-    }
+    });
 }
 
 // Bind handlers to window context to work with inline declarative DOM triggers
@@ -61,7 +68,6 @@ window.sendConfigToFirebase = function() {
     set(ref(db, 'round/config'), { potPerHole: potVal, playerNames: pNames });
 };
 
-// Notification Toast Trigger 
 function triggerInAppNotification(message) {
     const banner = document.getElementById('notificationBanner');
     const text = document.getElementById('notificationText');
@@ -75,12 +81,12 @@ function triggerInAppNotification(message) {
     }, 4000);
 }
 
-// Event Stream Listener monitoring cloud realtime engine
+// Event Stream Listener monitoring cloud realtime engine updates
 onValue(ref(db, 'round'), (snapshot) => {
     const data = snapshot.val();
     if (!data) return;
 
-    // Sync configuration details safely if not active input focus state
+    // Sync configuration details safely if fields aren't actively being typed in
     if (data.config) {
         if(document.activeElement !== document.getElementById('potPerHole')) {
             document.getElementById('potPerHole').value = data.config.potPerHole || 80;
@@ -93,7 +99,7 @@ onValue(ref(db, 'round'), (snapshot) => {
         });
     }
 
-    // Sync metrics without changing ongoing entry coordinates
+    // Sync metrics safely
     if (data.scores) {
         document.querySelectorAll('.score-input').forEach(input => {
             if (document.activeElement === input) return; 
@@ -106,7 +112,7 @@ onValue(ref(db, 'round'), (snapshot) => {
     localCalculateEngine(data);
 });
 
-// Calculation Loop Engine containing Hiawatha Business Rules
+// Calculation Loop Engine enforcing Birdies or Better rule logic
 function localCalculateEngine(data) {
     const totalRoundPot = (data.config && data.config.potPerHole) ? parseFloat(data.config.potPerHole) : 80;
     const players = (data.config && data.config.playerNames) ? data.config.playerNames : ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
@@ -120,14 +126,14 @@ function localCalculateEngine(data) {
     const logContainer = document.getElementById('analysisLog');
     logContainer.innerHTML = '';
     
-    // Clear styles
     document.querySelectorAll('.score-input').forEach(el => el.classList.remove('skin-winner-cell'));
 
     let roundSkinsDraft = [];
 
-    for (let h = 1; h <= totalHoles; h++) {
+    HiawathaCourseData.forEach(hd => {
+        const h = hd.hole;
         const holeData = data.scores ? data.scores[`hole_${h}`] : null;
-        const targetPar = HiawathaPars[h - 1];
+        const targetPar = hd.par;
         let validHole = true;
         let holeScores = [];
 
@@ -139,13 +145,13 @@ function localCalculateEngine(data) {
 
         if (!validHole) {
             createLogEntry(h, `Scores incomplete`, `Awaiting data`, 'text-slate-500');
-            continue;
+            return;
         }
 
         const minScore = Math.min(...holeScores.map(s => s.score));
         const lowest = holeScores.filter(s => s.score === minScore);
 
-        // Under-par skin validation constraint check
+        // Under-par condition lock check
         if (lowest.length === 1 && minScore < targetPar) {
             const winnerIdx = lowest[0].playerIndex;
             skinsCount[winnerIdx]++;
@@ -163,16 +169,16 @@ function localCalculateEngine(data) {
                 createLogEntry(h, `Halved at ${minScore}`, `No Skin`, 'text-slate-400');
             }
         }
-    }
+    });
 
-    // Handle Split Payout distribution variables
+    // Handle Split Payout distribution math across the pool
     const skinValue = totalSkinsWon > 0 ? (totalRoundPot / totalSkinsWon) : 0;
 
     roundSkinsDraft.forEach(skin => {
         createLogEntry(skin.hole, skin.msg, `Pays $${skinValue.toFixed(2)}`, 'text-emerald-400 font-bold bg-emerald-950/20 border-emerald-900/50');
     });
 
-    // Check if new skin event happened since last snapshot stream context update to fire push notification banner
+    // Trigger toast flag condition if a new skin registers 
     if (totalSkinsWon > currentSkinsCountGlobal && currentSkinsCountGlobal !== 0) {
         const latestSkin = roundSkinsDraft[roundSkinsDraft.length - 1];
         if (latestSkin) {
@@ -214,5 +220,5 @@ function renderLedger(players, skins, payouts, totalPot, totalSkinsWon) {
     });
 }
 
-// Kickstart Layout Markup Construction
+// Kickstart Construction
 initScorecardElements();
