@@ -1,0 +1,30 @@
+/* Custom resets to enable slick mobile landscape input grids */
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+/* Custom background adjustments for table variations */
+.bg-slate-750 {
+    background-color: #26334d;
+}
+
+.bg-slate-850 {
+    background-color: #1a2436;
+}
+
+/* Flash target animations for real-time visual updates */
+@keyframes flash-pulse {
+    0% { background-color: rgba(16, 185, 129, 0.4); }
+    100% { background-color: rgba(6, 78, 59, 1); }
+}
+
+.skin-winner-cell {
+    animation: flash-pulse 0.6s ease-out forwards;
+    border-color: #10b981 !important;
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hiawatha Live Skins Tracker</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen pb-12">
+
+    <!-- Live Notification Banner -->
+    <div id="notificationBanner" class="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-slate-950 font-bold px-4 py-2 rounded-full shadow-2xl opacity-0 pointer-events-none transition-all duration-300 flex items-center gap-2">
+        <span id="notificationText">Skin Carded!</span>
+    </div>
+
+    <div class="max-w-4xl mx-auto px-4 pt-6">
+        <!-- Header -->
+        <header class="mb-6 text-center border-b border-slate-800 pb-4">
+            <h1 class="text-3xl font-extrabold tracking-tight text-emerald-400">The Links at Hiawatha Landing</h1>
+            <p class="text-slate-400 text-sm mt-1">Live League Skins • Gross Birdies or Better Only</p>
+        </header>
+
+        <!-- Control & Configuration Board -->
+        <section class="bg-slate-800 rounded-xl p-4 mb-6 shadow-xl grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Total Round Pot ($)</label>
+                <input type="number" id="potPerHole" value="80" class="w-full bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white font-mono font-bold text-lg focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">League Group Field</label>
+                <div class="grid grid-cols-2 gap-2" id="playerInputs">
+                    <input type="text" value="Player 1" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
+                    <input type="text" value="Player 2" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
+                    <input type="text" value="Player 3" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
+                    <input type="text" value="Player 4" class="player-name bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-emerald-500" onchange="sendConfigToFirebase()">
+                </div>
+            </div>
+        </section>
+
+        <!-- Scorecard Responsive View Matrix -->
+        <section class="bg-slate-800 rounded-xl shadow-xl overflow-hidden mb-6 border border-slate-700">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[600px] table-fixed border-collapse">
+                    <thead>
+                        <tr class="bg-slate-750 border-b border-slate-700 text-slate-400">
+                            <th class="w-20 p-3 text-left text-xs font-bold uppercase tracking-wider">Hole</th>
+                            <th class="w-16 p-3 text-center text-xs font-bold uppercase tracking-wider bg-slate-850/50">Par</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 1</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 2</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 3</th>
+                            <th class="p-3 text-center text-xs font-bold uppercase tracking-wider player-lbl">Player 4</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scorecardBody" class="divide-y divide-slate-700/60">
+                        <!-- Populated by App JS Initialization -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Real-Time Metrics & Dashboards -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Dynamic Payout Ledger -->
+            <div class="bg-slate-800 rounded-xl p-5 shadow-xl border border-slate-700">
+                <h2 class="text-xl font-bold text-slate-200 mb-4 flex justify-between items-center">
+                    <span>Skins Split Payout</span>
+                    <span class="text-xs bg-emerald-950 text-emerald-400 font-mono px-2.5 py-1 rounded border border-emerald-800" id="totalPotDisplay">Total Pot: $80 (0 Skins)</span>
+                </h2>
+                <div id="payoutContainer" class="space-y-3">
+                    <!-- Dynamic Ledger Target -->
+                </div>
+            </div>
+
+            <!-- Skin Verification Analysis Feed -->
+            <div class="bg-slate-800 rounded-xl p-5 shadow-xl border border-slate-700 flex flex-col">
+                <h2 class="text-xl font-bold text-slate-200 mb-4">Live Skins Audit Log</h2>
+                <div class="overflow-y-auto max-h-64 flex-1 space-y-2 text-sm pr-1" id="analysisLog">
+                    <!-- Dynamic Feed Target -->
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Application Script Module Injection -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
