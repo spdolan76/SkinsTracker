@@ -1,5 +1,12 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { 
+    getAuth, 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 // !!! PASTE YOUR COPIED CONFIG OBJECT DIRECTLY HERE FROM FIREBASE CONSOLE !!!
 const firebaseConfig = {
@@ -15,10 +22,8 @@ const firebaseConfig = {
 // Initialize Cloud Connections
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const auth = getAuth(app);
 
-const totalHoles = 18;
-
-// Hardcoded Course Specifications: White Tees at The Links at Hiawatha Landing
 const HiawathaCourseData = [
     { hole: 1, par: 4, yards: 375 }, { hole: 2, par: 4, yards: 377 }, { hole: 3, par: 3, yards: 149 },
     { hole: 4, par: 4, yards: 361 }, { hole: 5, par: 4, yards: 345 }, { hole: 6, par: 3, yards: 188 },
@@ -29,8 +34,94 @@ const HiawathaCourseData = [
 ];
 
 let currentSkinsCountGlobal = 0;
+let isSignUpMode = false;
+let dbUnsubscribe = null;
 
-// Render basic input infrastructure matrix dynamically
+/* ==========================================================================
+   AUTHENTICATION WORKFLOW ENGINE
+   ========================================================================== */
+
+const authOverlay = document.getElementById('authOverlay');
+const appContent = document.getElementById('appContent');
+const authForm = document.getElementById('authForm');
+const authTitle = document.getElementById('authTitle');
+const authSubtitle = document.getElementById('authSubtitle');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authToggleBtn = document.getElementById('authToggleBtn');
+const authToggleText = document.getElementById('authToggleText');
+const authError = document.getElementById('authError');
+const userDisplay = document.getElementById('userDisplay');
+const logoutBtn = document.getElementById('logoutBtn');
+
+// Monitor Authentication Lifecycle States
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        // Logged In -> Pivot viewports
+        authOverlay.classList.add('hidden');
+        appContent.classList.remove('opacity-0', 'pointer-events-none');
+        userDisplay.innerText = user.email;
+        
+        initScorecardElements();
+        startDatabaseRealtimeSync();
+    } else {
+        // Logged Out -> Reset viewports & drop heavy listener hooks
+        authOverlay.classList.remove('hidden');
+        appContent.classList.add('opacity-0', 'pointer-events-none');
+        if (dbUnsubscribe) {
+            dbUnsubscribe();
+            dbUnsubscribe = null;
+        }
+    }
+});
+
+// Switch Mode Layouts (Login vs Sign Up)
+authToggleBtn.addEventListener('click', () => {
+    isSignUpMode = !isSignUpMode;
+    authError.classList.add('hidden');
+    authForm.reset();
+    
+    if (isSignUpMode) {
+        authTitle.innerText = "Create Account";
+        authSubtitle.innerText = "Register a new email to join the league";
+        authSubmitBtn.innerText = "Sign Up";
+        authToggleText.innerText = "Already have an account?";
+        authToggleBtn.innerText = "Log In Instead";
+    } else {
+        authTitle.innerText = "League Login";
+        authSubtitle.innerText = "Sign in to access the live skins dashboard";
+        authSubmitBtn.innerText = "Log In";
+        authToggleText.innerText = "Need an account?";
+        authToggleBtn.innerText = "Sign Up Instead";
+    }
+});
+
+// Authentication Form Dispatcher Submission Hook
+authForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('authEmail').value;
+    const password = document.getElementById('authPassword').value;
+    authError.classList.add('hidden');
+
+    if (isSignUpMode) {
+        createUserWithEmailAndPassword(auth, email, password)
+            .catch(err => displayAuthError(err.message));
+    } else {
+        signInWithEmailAndPassword(auth, email, password)
+            .catch(err => displayAuthError(err.message));
+    }
+});
+
+logoutBtn.addEventListener('click', () => signOut(auth));
+
+function displayAuthError(rawMsg) {
+    authError.innerText = rawMsg.replace("Firebase: ", "");
+    authError.classList.remove('hidden');
+}
+
+/* ==========================================================================
+   CORE SCORECARD CORE LOGIC ENGINE
+   ========================================================================== */
+
 function initScorecardElements() {
     const body = document.getElementById('scorecardBody');
     body.innerHTML = '';
@@ -38,13 +129,15 @@ function initScorecardElements() {
     HiawathaCourseData.forEach(hd => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-slate-800/40 transition-colors";
+        const doublePar = hd.par * 2;
+
         tr.innerHTML = `
             <td class="p-3 font-semibold text-slate-400">Hole ${hd.hole}</td>
             <td class="p-3 text-center font-black bg-slate-850/40 text-slate-300 border-x border-slate-750/30">${hd.par}</td>
             <td class="p-3 text-center font-mono font-medium text-xs text-slate-500 bg-slate-850/10">${hd.yards}</td>
             ${[0,1,2,3].map(pIdx => `
                 <td class="p-1.5">
-                    <input type="number" min="1" max="15" data-hole="${hd.hole}" data-player="${pIdx}" 
+                    <input type="number" min="0" max="${doublePar}" data-hole="${hd.hole}" data-player="${pIdx}" 
                     class="score-input hole-${hd.hole} w-full bg-slate-950 border border-slate-700/80 rounded py-2 text-center font-black text-lg text-emerald-400 focus:outline-none focus:border-emerald-500 transition-colors" 
                     oninput="sendScoreToFirebase(this)">
                 </td>
@@ -54,83 +147,63 @@ function initScorecardElements() {
     });
 }
 
-// Bind handlers to window context to work with inline declarative DOM triggers
-// Bind handlers to window context to work with inline declarative DOM triggers
 window.sendScoreToFirebase = function(inputEl) {
+    if (!auth.currentUser) return; // Fail-silent protection block
+    
     const hole = parseInt(inputEl.dataset.hole);
     const playerIndex = inputEl.dataset.player;
-    
-    // Find matching hole data to know its specific par
     const holeSpecs = HiawathaCourseData.find(hd => hd.hole === hole);
     const maxAllowed = holeSpecs ? holeSpecs.par * 2 : 10; 
 
     let val = inputEl.value === "" ? null : parseInt(inputEl.value);
 
-    // Enforce limits: Clamp score between 0 and double par
     if (val !== null) {
-        if (val < 0) {
-            val = 0;
-            inputEl.value = 0;
-        } else if (val > maxAllowed) {
-            val = maxAllowed;
-            inputEl.value = maxAllowed;
-        }
+        if (val < 0) { val = 0; inputEl.value = 0; }
+        else if (val > maxAllowed) { val = maxAllowed; inputEl.value = maxAllowed; }
     }
 
     set(ref(db, `round/scores/hole_${hole}/p_${playerIndex}`), val);
 };
 
 window.sendConfigToFirebase = function() {
+    if (!auth.currentUser) return;
     const potVal = parseFloat(document.getElementById('potPerHole').value) || 0;
     const pNames = Array.from(document.querySelectorAll('.player-name')).map(i => i.value || 'Player');
     set(ref(db, 'round/config'), { potPerHole: potVal, playerNames: pNames });
 };
 
-function triggerInAppNotification(message) {
-    const banner = document.getElementById('notificationBanner');
-    const text = document.getElementById('notificationText');
-    text.innerText = message;
-    banner.classList.remove('opacity-0', 'pointer-events-none');
-    banner.classList.add('opacity-100');
-    
-    setTimeout(() => {
-        banner.classList.remove('opacity-100');
-        banner.classList.add('opacity-0', 'pointer-events-none');
-    }, 4000);
+function startDatabaseRealtimeSync() {
+    // Keep reference handle to kill pipeline on logout events
+    dbUnsubscribe = onValue(ref(db, 'round'), (snapshot) => {
+        const data = snapshot.val();
+        if (!data) return;
+
+        if (data.config) {
+            if(document.activeElement !== document.getElementById('potPerHole')) {
+                document.getElementById('potPerHole').value = data.config.potPerHole || 80;
+            }
+            const nameInputs = document.querySelectorAll('.player-name');
+            const labels = document.querySelectorAll('.player-lbl');
+            (data.config.playerNames || []).forEach((name, i) => {
+                if(nameInputs[i] && document.activeElement !== nameInputs[i]) nameInputs[i].value = name;
+                if(labels[i]) labels[i].innerText = name;
+            });
+        }
+
+        if (data.scores) {
+            document.querySelectorAll('.score-input').forEach(input => {
+                if (document.activeElement === input) return; 
+                const h = input.dataset.hole;
+                const p = input.dataset.player;
+                input.value = (data.scores[`hole_${h}`] && data.scores[`hole_${h}`][`p_${p}`]) ? data.scores[`hole_${h}`][`p_${p}`] : '';
+            });
+        }
+
+        localCalculateEngine(data);
+    });
 }
 
-// Event Stream Listener monitoring cloud realtime engine updates
-onValue(ref(db, 'round'), (snapshot) => {
-    const data = snapshot.val();
-    if (!data) return;
-
-    // Sync configuration details safely if fields aren't actively being typed in
-    if (data.config) {
-        if(document.activeElement !== document.getElementById('potPerHole')) {
-            document.getElementById('potPerHole').value = data.config.potPerHole || 80;
-        }
-        const nameInputs = document.querySelectorAll('.player-name');
-        const labels = document.querySelectorAll('.player-lbl');
-        (data.config.playerNames || []).forEach((name, i) => {
-            if(nameInputs[i] && document.activeElement !== nameInputs[i]) nameInputs[i].value = name;
-            if(labels[i]) labels[i].innerText = name;
-        });
-    }
-
-    // Sync metrics safely
-    if (data.scores) {
-        document.querySelectorAll('.score-input').forEach(input => {
-            if (document.activeElement === input) return; 
-            const h = input.dataset.hole;
-            const p = input.dataset.player;
-            input.value = (data.scores[`hole_${h}`] && data.scores[`hole_${h}`][`p_${p}`]) ? data.scores[`hole_${h}`][`p_${p}`] : '';
-        });
-    }
-
-    localCalculateEngine(data);
-});
-
-// Calculation Loop Engine enforcing Birdies or Better rule logic
+// Logic engine wrapper and ledger construction pipeline
 function localCalculateEngine(data) {
     const totalRoundPot = (data.config && data.config.potPerHole) ? parseFloat(data.config.potPerHole) : 80;
     const players = (data.config && data.config.playerNames) ? data.config.playerNames : ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
@@ -140,11 +213,7 @@ function localCalculateEngine(data) {
     let payouts = {};
     
     players.forEach((p, idx) => { skinsCount[idx] = 0; payouts[idx] = 0; });
-
-    const logContainer = document.getElementById('analysisLog');
-    logContainer.innerHTML = '';
-    
-    document.querySelectorAll('.score-input').forEach(el => el.classList.remove('skin-winner-cell'));
+    document.getElementById('analysisLog').innerHTML = '';
 
     let roundSkinsDraft = [];
 
@@ -169,39 +238,22 @@ function localCalculateEngine(data) {
         const minScore = Math.min(...holeScores.map(s => s.score));
         const lowest = holeScores.filter(s => s.score === minScore);
 
-        // Under-par condition lock check
         if (lowest.length === 1 && minScore < targetPar) {
             const winnerIdx = lowest[0].playerIndex;
             skinsCount[winnerIdx]++;
             totalSkinsWon++;
-            
-            const matchEl = document.querySelector(`[data-hole="${h}"][data-player="${winnerIdx}"]`);
-            if (matchEl) matchEl.classList.add('skin-winner-cell');
-
-            const scoreRelation = (targetPar - minScore === 1) ? 'Birdie' : 'Eagle+';
-            roundSkinsDraft.push({ hole: h, msg: `${players[winnerIdx]} carded a ${scoreRelation} (${minScore})`, winnerName: players[winnerIdx] });
+            roundSkinsDraft.push({ hole: h, msg: `${players[winnerIdx]} carded a ${targetPar - minScore === 1 ? 'Birdie' : 'Eagle+'} (${minScore})`, winnerName: players[winnerIdx] });
         } else {
-            if (lowest.length === 1 && minScore === targetPar) {
-                createLogEntry(h, `Par (${minScore}) cannot secure skin`, `No Skin`, 'text-slate-400');
-            } else {
-                createLogEntry(h, `Halved at ${minScore}`, `No Skin`, 'text-slate-400');
-            }
+            createLogEntry(h, lowest.length === 1 ? `Par (${minScore}) cannot secure skin` : `Halved at ${minScore}`, `No Skin`, 'text-slate-400');
         }
     });
 
-    // Handle Split Payout distribution math across the pool
     const skinValue = totalSkinsWon > 0 ? (totalRoundPot / totalSkinsWon) : 0;
+    roundSkinsDraft.forEach(skin => createLogEntry(skin.hole, skin.msg, `Pays $${skinValue.toFixed(2)}`, 'text-emerald-400 font-bold bg-emerald-950/20 border-emerald-900/50'));
 
-    roundSkinsDraft.forEach(skin => {
-        createLogEntry(skin.hole, skin.msg, `Pays $${skinValue.toFixed(2)}`, 'text-emerald-400 font-bold bg-emerald-950/20 border-emerald-900/50');
-    });
-
-    // Trigger toast flag condition if a new skin registers 
     if (totalSkinsWon > currentSkinsCountGlobal && currentSkinsCountGlobal !== 0) {
         const latestSkin = roundSkinsDraft[roundSkinsDraft.length - 1];
-        if (latestSkin) {
-            triggerInAppNotification(`🔥 Skin Secured on Hole ${latestSkin.hole} by ${latestSkin.winnerName}!`);
-        }
+        if (latestSkin) triggerInAppNotification(`🔥 Skin Secured on Hole ${latestSkin.hole} by ${latestSkin.winnerName}!`);
     }
     currentSkinsCountGlobal = totalSkinsWon;
 
@@ -238,5 +290,14 @@ function renderLedger(players, skins, payouts, totalPot, totalSkinsWon) {
     });
 }
 
-// Kickstart Construction
-initScorecardElements();
+function triggerInAppNotification(message) {
+    const banner = document.getElementById('notificationBanner');
+    const text = document.getElementById('notificationText');
+    text.innerText = message;
+    banner.classList.remove('opacity-0', 'pointer-events-none');
+    banner.classList.add('opacity-100');
+    setTimeout(() => {
+        banner.classList.remove('opacity-100');
+        banner.classList.add('opacity-0', 'pointer-events-none');
+    }, 4000);
+}
