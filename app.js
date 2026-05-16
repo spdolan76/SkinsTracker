@@ -55,10 +55,28 @@ function initScorecardElements() {
 }
 
 // Bind handlers to window context to work with inline declarative DOM triggers
+// Bind handlers to window context to work with inline declarative DOM triggers
 window.sendScoreToFirebase = function(inputEl) {
-    const hole = inputEl.dataset.hole;
+    const hole = parseInt(inputEl.dataset.hole);
     const playerIndex = inputEl.dataset.player;
-    const val = parseInt(inputEl.value) || null;
+    
+    // Find matching hole data to know its specific par
+    const holeSpecs = HiawathaCourseData.find(hd => hd.hole === hole);
+    const maxAllowed = holeSpecs ? holeSpecs.par * 2 : 10; 
+
+    let val = inputEl.value === "" ? null : parseInt(inputEl.value);
+
+    // Enforce limits: Clamp score between 0 and double par
+    if (val !== null) {
+        if (val < 0) {
+            val = 0;
+            inputEl.value = 0;
+        } else if (val > maxAllowed) {
+            val = maxAllowed;
+            inputEl.value = maxAllowed;
+        }
+    }
+
     set(ref(db, `round/scores/hole_${hole}/p_${playerIndex}`), val);
 };
 
