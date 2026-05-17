@@ -8,15 +8,15 @@ import {
     onAuthStateChanged 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-// !!! PASTE YOUR COPIED CONFIG OBJECT DIRECTLY HERE FROM FIREBASE CONSOLE !!!
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
-    messagingSenderId: "...",
-    appId: "..."
+  apiKey: "AIzaSyCidvULMz_g32saznq15q3lJrtnufd_xIo",
+  authDomain: "golfleagueskins.firebaseapp.com",
+  projectId: "golfleagueskins",
+  storageBucket: "golfleagueskins.firebasestorage.app",
+  messagingSenderId: "1079188950398",
+  appId: "1:1079188950398:web:eeda309172314e79eb772f",
+  measurementId: "G-RCWCWS954E"
 };
 
 // Initialize Cloud Connections
