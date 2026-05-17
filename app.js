@@ -13,6 +13,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCidvULMz_g32saznq15q3lJrtnufd_xIo",
   authDomain: "golfleagueskins.firebaseapp.com",
   projectId: "golfleagueskins",
+  databaseURL: "https://golfleagueskins-default-rtdb.firebaseio.com/",
   storageBucket: "golfleagueskins.firebasestorage.app",
   messagingSenderId: "1079188950398",
   appId: "1:1079188950398:web:eeda309172314e79eb772f",
