@@ -96,19 +96,37 @@ window.toggleAuthMode = function() {
     }
 };
 
-// Authentication Form Dispatcher Submission Hook
+/ Authentication Form Dispatcher Submission Hook
 authForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = document.getElementById('authEmail').value;
+    
+    // Explicitly grab the latest values right at submission execution
+    const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
+    
     authError.classList.add('hidden');
 
     if (isSignUpMode) {
         createUserWithEmailAndPassword(auth, email, password)
-            .catch(err => displayAuthError(err.message));
+            .then((userCredential) => {
+                // Success! Force overlay clear and clean form
+                authOverlay.classList.add('hidden');
+                authForm.reset();
+            })
+            .catch(err => {
+                console.error("Sign Up Error Details:", err);
+                displayAuthError(err.message);
+            });
     } else {
         signInWithEmailAndPassword(auth, email, password)
-            .catch(err => displayAuthError(err.message));
+            .then((userCredential) => {
+                authOverlay.classList.add('hidden');
+                authForm.reset();
+            })
+            .catch(err => {
+                console.error("Log In Error Details:", err);
+                displayAuthError(err.message);
+            });
     }
 });
 
